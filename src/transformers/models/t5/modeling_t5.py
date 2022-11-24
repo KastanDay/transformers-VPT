@@ -350,6 +350,8 @@ class T5Attention(nn.Module):
         self.o = nn.Linear(self.inner_dim, self.d_model, bias=False)
 
         if self.has_relative_attention_bias:
+            # relative_attention_num_buckets = 32
+            # n_heads = 128 (in T5-11B)
             self.relative_attention_bias = nn.Embedding(self.relative_attention_num_buckets, self.n_heads)
         self.pruned_heads = set()
         self.gradient_checkpointing = False
@@ -1674,6 +1676,13 @@ class T5ForConditionalGeneration(T5PreTrainedModel):
             sequence_output = sequence_output * (self.model_dim**-0.5)
 
         lm_logits = self.lm_head(sequence_output)
+        
+        # LOSS is calculated here!!! 
+        # todo: implement contrastive loss, like clip. 
+        # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
+        # maximize similarity between image-text embeddings of the same segment, 
+        # Swap in other segment embeddings as negative samples.
+        # 
 
         loss = None
         if labels is not None:
@@ -1758,7 +1767,9 @@ class T5ForConditionalGeneration(T5PreTrainedModel):
     T5_START_DOCSTRING,
 )
 class T5EncoderModel(T5PreTrainedModel):
-    _keys_to_ignore_on_load_missing = [r"encoder.embed_tokens.weight"]
+    authorized_missing_keys = [
+        r"encoder.embed_tokens.weight",
+    ]
 
     def __init__(self, config: T5Config):
         super().__init__(config)
